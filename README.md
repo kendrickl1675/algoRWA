@@ -114,7 +114,7 @@ Bash
 
 ```
 # 1. 克隆仓库
-git clone [https://github.com/kendrickl1675/algoRWA.git]
+git clone https://github.com/kendrickl1675/algoRWA.git
 cd algoRWA
 
 # 2. 安装依赖 (自动创建虚拟环境)
