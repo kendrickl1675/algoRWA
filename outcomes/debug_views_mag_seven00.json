@@ -1,0 +1,48 @@
+[
+  {
+    "assets": [
+      "NVDA"
+    ],
+    "weights": [
+      1.0
+    ],
+    "expected_return": 0.08,
+    "confidence": 0.9,
+    "description": "[AI-Agent] Bullish: Nvidia is the primary beneficiary of the confirmed $600B+ AI capital expenditure plans by Big Tech (Amazon, Microsoft, Google) for 2026. With hyperscalers committed to buying chips despite margin pressure, Nvidia's revenue visibility is at an all-time high."
+  },
+  {
+    "assets": [
+      "AMZN"
+    ],
+    "weights": [
+      -1.0
+    ],
+    "expected_return": 0.05,
+    "confidence": 0.8,
+    "description": "[AI-Agent] Bearish: Amazon announced a shock $200B capex plan for 2026, triggering a sell-off. Investors are deeply concerned about the capital intensity required to compete in AI and the resulting pressure on free cash flow."
+  },
+  {
+    "assets": [
+      "MSFT"
+    ],
+    "weights": [
+      -1.0
+    ],
+    "expected_return": 0.03,
+    "confidence": 0.7,
+    "description": "[AI-Agent] Bearish: Microsoft's guidance indicated a deceleration in Azure growth (to 37-38%) alongside surging capital expenditures. This 'slowing growth + rising costs' narrative creates a negative short-term setup."
+  },
+  {
+    "assets": [
+      "META",
+      "GOOGL"
+    ],
+    "weights": [
+      1.0,
+      -1.0
+    ],
+    "expected_return": 0.04,
+    "confidence": 0.65,
+    "description": "[AI-Agent] Relative Value: Meta is expected to outperform Alphabet (Google). Meta's recent earnings beat and 'glowing' analyst reports contrast with Google's struggle to justify its $175B+ capex guidance to investors."
+  }
+]

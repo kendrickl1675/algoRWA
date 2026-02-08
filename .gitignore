@@ -8,3 +8,10 @@ wheels/
 
 # Virtual environments
 .venv
+
+.env
+
+
+#files for sync session
+project_context.md
+sync_context.py

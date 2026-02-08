@@ -1,0 +1,20 @@
+{
+  "default": [
+    {
+      "assets": ["NVDA", "MSFT"],
+      "weights": [1.0, -1.0],
+      "expected_return": 0.05,
+      "confidence": 0.50,
+      "description": "Bullish on AI Hardware vs Software"
+    }
+  ],
+  "mag_seven": [
+    {
+      "assets": ["TSLA"],
+      "weights": [-1.0],
+      "expected_return": 0.03,
+      "confidence": 0.60,
+      "description": "Short TSLA due to delivery miss"
+    }
+  ]
+}

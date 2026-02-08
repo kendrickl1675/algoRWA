@@ -1,27 +1,33 @@
 [project]
-name = "algoRWA"
+name = "rwaengine"
 version = "0.1.0"
 description = "Off-chain computation engine for Black-Litterman RWA fund"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "pandas>=2.2.0",           # 数据处理核心
-    "numpy>=1.26.0",           # 数值计算
-    "yfinance>=0.2.36",        # 市场数据 (MVP阶段)
-    "pydantic>=2.6.0",         # 数据验证严格模式
-    "pydantic-settings>=2.2.0",# 配置管理
-    "scipy>=1.12.0",           # 优化算法依赖
-    "loguru>=0.7.2",           # 现代日志记录 (比 logging 更好用)
-    "pyportfolioopt>=1.5.5",   # 投资组合优化基石
+    "pandas>=2.2.0",
+    "numpy>=1.26.0",
+    "yfinance>=0.2.36",
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.2.0",
+    "scipy>=1.12.0",
+    "loguru>=0.7.2",
+    "pyportfolioopt>=1.5.5",
+    "scikit-learn>=1.4.0",
+    "eth-account>=0.13.7",
+    "xgboost>=2.0.0",
+    "google-genai>=1.61.0",
+    "langchain-google-genai>=4.2.0",
+    "python-dotenv>=1.2.1",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0.0",           # 单元测试
-    "pytest-cov>=4.1.0",       # 覆盖率报告
-    "black>=24.0.0",           # 代码格式化
-    "mypy>=1.8.0",             # 静态类型检查
-    "ruff>=0.2.0",             # 高性能 Linter (替代 pylint/flake8)
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "black>=24.0.0",
+    "mypy>=1.8.0",
+    "ruff>=0.2.0",
 ]
 
 [build-system]
@@ -32,3 +38,6 @@ build-backend = "hatchling.build"
 addopts = "--cov=src --cov-report=term-missing"
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rwaengine"]

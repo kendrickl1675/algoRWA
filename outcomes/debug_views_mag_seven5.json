@@ -1,0 +1,35 @@
+[
+  {
+    "assets": [
+      "AAPL"
+    ],
+    "weights": [
+      1.0
+    ],
+    "expected_return": 0.139436235068248,
+    "confidence": 0.8,
+    "description": "[Tier 2] Analysts raised price targets due to strong iPhone 17 demand and Services growth. (Annualized Imp. Ret: 13.94%)"
+  },
+  {
+    "assets": [
+      "META"
+    ],
+    "weights": [
+      1.0
+    ],
+    "expected_return": 0.28110539082587216,
+    "confidence": 0.8,
+    "description": "[Tier 2] Strong Q4 earnings and AI investments drive positive sentiment. (Annualized Imp. Ret: 28.11%)"
+  },
+  {
+    "assets": [
+      "NVDA"
+    ],
+    "weights": [
+      1.0
+    ],
+    "expected_return": 0.4237635203330239,
+    "confidence": 0.95,
+    "description": "[Tier 1] Upcoming earnings report and strong growth in AI-related GPU sales. (Annualized Imp. Ret: 42.38%)"
+  }
+]

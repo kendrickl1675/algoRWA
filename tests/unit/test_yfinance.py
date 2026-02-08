@@ -10,7 +10,6 @@ def test_run():
     adapter = YFinanceAdapter(proxy=None)
 
     # 2. 设置时间窗口
-    # 技巧：获取过去 10 天的数据，确保一定能包含交易日
     today = date.today()
     start_date = today - timedelta(days=5)
 

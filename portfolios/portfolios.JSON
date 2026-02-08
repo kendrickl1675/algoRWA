@@ -1,0 +1,25 @@
+{
+  "default": ["AAPL", "MSFT", "GOOGL", "NVDA"],
+  "mag_seven": [
+    "AAPL",
+    "MSFT",
+    "GOOGL",
+    "AMZN",
+    "NVDA",
+    "META",
+    "TSLA"
+  ],
+  "dividend_aristocrats": [
+    "KO",
+    "JNJ",
+    "PG",
+    "XOM",
+    "CVX"
+  ],
+  "rwa_demo": [
+    "COIN",
+    "MSTR",
+    "HOOD",
+    "SQ"
+  ]
+}
