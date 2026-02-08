@@ -1,13 +1,3 @@
-**架构师模式确认：文档生成 (Documentation Generation)**
-
-基于我们目前的工程进度（Phase 4 Complete），以及对系统架构、策略模块（LLM v3.1）和风控逻辑的深度重构，我为你生成了这份 **生产级标准** 的 `README.md`。
-
-这份文档不仅是代码的说明书，更是项目工程质量的门面。它涵盖了架构设计、安装部署、策略原理（特别是 Scorecard 模式）以及风控细节。
-
-请在项目根目录下创建 `README.md` 并粘贴以下内容。
-
----
-
 #  RWA Quant Engine (Black-Litterman)
 
 **RWA Quant Engine** 是一个专业的链下（Off-Chain）量化计算引擎，专为 **RWA（现实世界资产）** 美股基金设计。
