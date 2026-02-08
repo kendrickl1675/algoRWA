@@ -1,5 +1,7 @@
+# RWA Quant Engine (Black-Litterman)
+**RWA Quant Engine** 是一个专业的链下（Off-Chain）量化计算引擎，专为 **RWA（现实世界资产）** 美股基金设计。
 
-**RWA Quant Engine** 是一个专为 RWA（现实世界资产）美股基金设计的链下量化计算引擎。它是一个完整的投资组合管理系统。
+该引擎采用 **Black-Litterman 模型** 作为核心算法，结合 **Google Gemini 3.0** 的多模态推理能力与 **XGBoost** 量化因子生成战术观点，并通过严苛的风控层（Risk Guardrails）输出经过审计的、可被预言机（Oracle）验证的投资组合权重。
 
 **核心价值主张：**
 
@@ -13,16 +15,6 @@
     
 5. **全周期验证 (新增)**：新增了专业的**回测与归因分析模块**，支持 Walk-Forward 滚动回测、VIX 市场体制分析以及多策略同台竞技。
     
-
----
-
-
-````
-# RWA Quant Engine (Black-Litterman)
-
-**RWA Quant Engine** 是一个专业的链下（Off-Chain）量化计算引擎，专为 **RWA（现实世界资产）** 美股基金设计。
-
-该引擎采用 **Black-Litterman 模型** 作为核心算法，结合 **Google Gemini 3.0** 的多模态推理能力与 **XGBoost** 量化因子生成战术观点，并通过严苛的风控层（Risk Guardrails）输出经过审计的、可被预言机（Oracle）验证的投资组合权重。
 
 ---
 
@@ -61,7 +53,8 @@ graph LR
     subgraph "Phase 5: Analysis"
     F["Walk-Forward Backtest"]
     end
-````
+```
+
 
 ---
 
@@ -104,7 +97,7 @@ graph LR
 
 ---
 
-## 📦 Installation (安装指南)
+##   Installation (安装指南)
 
 本项目使用 `uv` 进行极速依赖管理。
 
@@ -141,7 +134,7 @@ RWA_SIGNER_KEY="0x..."       # 用于预言机签名 (测试私钥)
 
 ---
 
-## 🚀 Usage (使用指南)
+##   Usage (使用指南)
 
 ### 1. 生产模式 (Production Pipeline)
 
