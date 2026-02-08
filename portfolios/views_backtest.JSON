@@ -1,0 +1,25 @@
+{
+  "mag_seven": [
+    {
+      "assets": ["NVDA"],
+      "weights": [1.0],
+      "expected_return": 0.40,
+      "confidence": 0.80,
+      "description": "Long-term AI Hardware dominance"
+    },
+    {
+      "assets": ["MSFT"],
+      "weights": [1.0],
+      "expected_return": 0.25,
+      "confidence": 0.70,
+      "description": "Cloud & Enterprise moat"
+    },
+    {
+      "assets": ["AAPL", "GOOGL"],
+      "weights": [-0.5, 1.0],
+      "expected_return": 0.10,
+      "confidence": 0.60,
+      "description": "Google slightly outperforms Apple"
+    }
+  ]
+}

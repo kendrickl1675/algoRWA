@@ -22,7 +22,7 @@ class BlackLittermanEngine:
         self.prices = prices
         self.config = config
 
-        # 1. 计算协方差矩阵 (使用 Ledoit-Wolf 收缩算法以增强稳定性)
+        # 计算协方差矩阵 (使用 Ledoit-Wolf 收缩算法以增强稳定性)
         logger.info("Computing Covariance Matrix (Ledoit-Wolf)...")
         self.S = risk_models.CovarianceShrinkage(self.prices).ledoit_wolf()
 
@@ -41,7 +41,6 @@ class BlackLittermanEngine:
 
         logger.info("Calculating Market Implied Returns (Prior)...")
 
-        # 数据对齐：将 market_caps 字典转为与 tickers 顺序一致的 Series
         mcaps = pd.Series(market_caps).reindex(tickers)
 
         # [Risk Control] 填充缺失市值。生产环境应报错，这里用均值填充防止 Crash
@@ -49,11 +48,9 @@ class BlackLittermanEngine:
             logger.warning(f"Missing market caps for {mcaps[mcaps.isnull()].index.tolist()}. Using mean.")
             mcaps = mcaps.fillna(mcaps.mean())
 
-        # 计算市场隐含的风险厌恶系数 (Delta)
         delta = self.config.risk_aversion
         logger.info(f"Market Implied Risk Aversion (Delta): {delta:.4f}")
 
-        # 计算 Pi (先验预期收益)
         market_prior = black_litterman.market_implied_prior_returns(
             market_caps=mcaps,
             risk_aversion=delta,
@@ -64,22 +61,19 @@ class BlackLittermanEngine:
         if not views:
             logger.warning("No views provided. Fallback to Market Prior.")
             posterior_rets = market_prior
-            # 如果没有观点，后验协方差等于先验协方差
             posterior_cov = self.S
         else:
             logger.info(f"Integrating {len(views)} Investor Views...")
 
-            # 将我们的 InvestorView 对象解析为 P, Q, Confidences
             Q, P, view_confidences = self._parse_views(views, tickers)
 
-            # 实例化 PyPortfolioOpt 的 BL 模型
             bl = black_litterman.BlackLittermanModel(
                 cov_matrix=self.S,
                 pi=market_prior,
                 absolute_views=None,
                 Q=Q,
                 P=P,
-                omega="idzorek",     # 关键算法：根据置信度自动计算 Omega
+                omega="idzorek",
                 view_confidences=view_confidences,
                 tau=self.config.tau,
                 risk_aversion=delta
@@ -90,7 +84,6 @@ class BlackLittermanEngine:
 
         logger.info("Optimizing Portfolio Weights (Max Sharpe)...")
 
-        # 使用 BL 计算出的后验收益和协方差输入到有效前沿优化器
         ef = efficient_frontier.EfficientFrontier(
             posterior_rets,
             posterior_cov
@@ -99,7 +92,6 @@ class BlackLittermanEngine:
         # 不使用l2正则, 通过后续的风控模块控制集中度
         # ef.add_objective(objective_functions.L2_reg, gamma=0.1)
 
-        # 求解最大夏普比率
         # risk_free_rate=0.04 (对应当前美债收益率)
         try:
             raw_weights = ef.max_sharpe(risk_free_rate=0.04)
@@ -146,12 +138,22 @@ class BlackLittermanEngine:
         return Q, P, confidences
 
     def _fallback_result(self, tickers: List[str]) -> OptimizationResult:
-        """当优化器崩溃时的兜底方案：等权重"""
+        """
+        当优化器崩溃时的兜底方案。
+
+        如果优化失败（通常是因为收益率太低或矩阵奇异），
+        与其盲目买入风险资产 (Equal Weights)，不如持有现金 (100% USDC)。
+        """
+        logger.warning("Optimization failed. Fallback Strategy: FLIGHT TO SAFETY (100% USDC).")
+
+
         n = len(tickers)
+        safe_weights = [0.0] * n
+
         return OptimizationResult(
             tickers=tickers,
-            weights=[1.0/n] * n,
-            expected_return=0.0,
+            weights=safe_weights,
+            expected_return=0.0,  # 假设持有现金超额收益为0
             volatility=0.0,
             sharpe_ratio=0.0
         )

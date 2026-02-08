@@ -1,0 +1,32 @@
+{
+  "mag_seven": [
+    {
+      "assets": ["NVDA"],
+      "weights": [1.0],
+      "expected_return": -0.45,
+      "confidence": 0.95,
+      "description": "AI Bubble Burst: GPU demand collapses (Extreme Bearish)"
+    },
+    {
+      "assets": ["TSLA"],
+      "weights": [1.0],
+      "expected_return": -0.35,
+      "confidence": 0.90,
+      "description": "EV Market Saturation & Margin compression"
+    },
+    {
+      "assets": ["AAPL", "MSFT"],
+      "weights": [1.0, -1.0],
+      "expected_return": -0.15,
+      "confidence": 0.80,
+      "description": "Pair Trade: Consumer Hardware (AAPL) underperforms Enterprise Cloud (MSFT) by 15%"
+    },
+    {
+      "assets": ["GOOGL", "AMZN", "META"],
+      "weights": [0.33, 0.33, 0.33],
+      "expected_return": -0.20,
+      "confidence": 0.75,
+      "description": "Regulatory Headwinds: Antitrust crackdown on platforms"
+    }
+  ]
+}

@@ -1,14 +1,34 @@
-#  RWA Quant Engine (Black-Litterman)
 
-**RWA Quant Engine** 是一个专业的链下（Off-Chain）量化计算引擎，专为 **RWA（现实世界资产）** 美股基金设计。
+**RWA Quant Engine** 是一个专为 RWA（现实世界资产）美股基金设计的链下量化计算引擎。它是一个完整的投资组合管理系统。
 
-该引擎采用 **Black-Litterman 模型** 作为核心算法，结合 **Google Gemini 3.0** 的多模态推理能力生成战术观点，并通过严苛的风控层（Risk Guardrails）输出经过审计的、可被预言机（Oracle）验证的投资组合权重。
+**核心价值主张：**
+
+1. **数学核心**：以 **Black-Litterman** 模型为基石，解决了传统 Markowitz 模型对输入敏感且容易产生极端仓位的缺陷。
+    
+2. **多模态观点**：支持三种观点生成模式——**人工专家 (JSON)**、**量化挖掘 (XGBoost)** 和 **AI 宏观分析 (Gemini LLM)**。
+    
+3. **风控优先**：内置严格的 `Gatekeeper`，执行 30% 硬顶、5% 现金缓冲 (USDC) 和碎股清理，确保链上资产安全。
+    
+4. **可验证性**：输出经过 EIP-191 签名的 Oracle Payload，实现了链下计算与链上结算的闭环。
+    
+5. **全周期验证 (新增)**：新增了专业的**回测与归因分析模块**，支持 Walk-Forward 滚动回测、VIX 市场体制分析以及多策略同台竞技。
+    
 
 ---
 
-##  System Architecture (系统架构)
 
-本系统遵循 **Pipeline 模式**，数据流向单向且不可变：
+````
+# RWA Quant Engine (Black-Litterman)
+
+**RWA Quant Engine** 是一个专业的链下（Off-Chain）量化计算引擎，专为 **RWA（现实世界资产）** 美股基金设计。
+
+该引擎采用 **Black-Litterman 模型** 作为核心算法，结合 **Google Gemini 3.0** 的多模态推理能力与 **XGBoost** 量化因子生成战术观点，并通过严苛的风控层（Risk Guardrails）输出经过审计的、可被预言机（Oracle）验证的投资组合权重。
+
+---
+
+##   System Architecture (系统架构)
+
+本系统遵循 **Pipeline 模式**，从数据摄入到预言机汇报，单向流动且不可变：
 
 ```mermaid
 graph LR
@@ -16,6 +36,7 @@ graph LR
     B --> C["Core Engine (BL Model)"]
     C --> D["Risk Gatekeeper"]
     D --> E["Oracle Reporter"]
+    B --> F["Backtesting Suite"]
 
     subgraph "Phase 1: Data"
     A["YFinance Adapter"]
@@ -23,7 +44,7 @@ graph LR
 
     subgraph "Phase 2: Strategy"
     B1["Manual JSON"]
-    B2["ML Predictor"]
+    B2["ML Alpha Hunter (XGBoost)"]
     B3["LLM Agent (Gemini + Search)"]
     end
 
@@ -37,174 +58,195 @@ graph LR
     E2["JSON Payload"]
     end
 
-```
+    subgraph "Phase 5: Analysis"
+    F["Walk-Forward Backtest"]
+    end
+````
 
 ---
 
 ##  Key Features (核心特性)
 
 1. **Black-Litterman Optimization**:
-* 使用 **Idzorek 方法** 处理观点置信度（Confidence -> Omega Matrix）。
-* 结合 **Ledoit-Wolf 收缩** 估算协方差矩阵，提升小样本下的稳定性。
-
-
-2. **AI-Powered Strategy (v3.1)**:
-* 集成 **Google Gemini 3.0 Pro** 与 **Google Search**。
-* **Scorecard Pattern**: 摒弃 LLM 随机打分，采用“证据分级制度 (Tier 1/2/3)” 提取硬数据（财报、目标价）。
-* **Auto-Calibration**: 自动将分析师目标价转换为 BL 模型所需的 **年化预期收益 (Annualized Returns)**。
-
-
-3. **Institutional Risk Control**:
-* **Gatekeeper**: 可选执行单票 30% 上限与 5% USDC 现金缓冲。
-* **Dust Filtering**: 自动过滤 < 1% 的碎股权重，节省链上 Gas。
-
-
-4. **Oracle Ready**:
-* 输出符合 **Chainlink Any API** 规范的 JSON。
-* 包含 **Cryptographic Signature** (EIP-191)，防止数据在传输过程中被篡改。
-
-
+    
+    - 使用 **Idzorek 方法** 处理观点置信度（Confidence -> Omega Matrix）。
+        
+    - 结合 **Ledoit-Wolf 收缩** 估算协方差矩阵，提升小样本下的稳定性。
+        
+2. **Professional Backtesting Suite (New!)**:
+    
+    - **Walk-Forward Analysis**: 支持基于滚动窗口（Rolling Window）的历史回测，杜绝未来函数。
+        
+    - **Multi-Strategy Comparison**: 同台竞技 **Black-Litterman**、**Markowitz (MV)**、**Equal Weight** 与 **SPY Benchmark**。
+        
+    - **VIX Regime Visualizer**: 专业的双面板可视化，将净值曲线与 **VIX 恐慌指数** 叠加，直观展示策略在不同市场体制下的防御能力。
+        
+    - **Allocation History**: 生成堆叠面积图 (Stacked Area Plot)，透视策略内部的仓位轮动与风控介入情况。
+        
+3. **AI & ML Strategies**:
+    
+    - **LLM Agent (v3.1)**: Gemini 3.0 + Google Search。采用“证据分级制度 (Scorecard)”将非结构化新闻转化为年化观点。
+        
+    - **ML Alpha Hunter**: 基于 **XGBoost**，融合 RSI、动量及 **VIX 波动率特征**，预测相对大盘的超额收益 (Alpha)。
+        
+4. **Institutional Risk Control**:
+    
+    - **Gatekeeper**: 强制执行单票 30% 上限与 5% USDC 现金缓冲。
+        
+    - **Dust Filtering**: 自动过滤 < 1% 的碎股权重，节省链上 Gas。
+        
+5. **Oracle Ready**:
+    
+    - 输出符合 **Chainlink Any API** 规范的 JSON。
+        
+    - 包含 **Cryptographic Signature** (EIP-191)，防止数据在传输过程中被篡改。
+        
 
 ---
 
-##   Installation (安装指南)
+## 📦 Installation (安装指南)
 
 本项目使用 `uv` 进行极速依赖管理。
 
 ### 1. Prerequisites
 
-* Python >= 3.12
-* [uv](https://github.com/astral-sh/uv) (推荐) 或 Pip
+- Python >= 3.12
+    
+- [uv](https://github.com/astral-sh/uv) (推荐)
+    
 
 ### 2. Setup
 
-```bash
+Bash
+
+```
 # 1. 克隆仓库
-git clone https://github.com/your-repo/rwa-quant-engine.git
+git clone [https://github.com/your-repo/rwa-quant-engine.git](https://github.com/your-repo/rwa-quant-engine.git)
 cd rwa-quant-engine
 
 # 2. 安装依赖 (自动创建虚拟环境)
 uv sync --extra dev
-
 ```
 
 ### 3. Configuration (.env)
 
 复制 `.env.example` 为 `.env` 并填入密钥：
 
-```ini
-# Google Gemini API Key (用于 AI 策略)
-GEMINI_API_KEY="AIzaSy..."
+Ini, TOML
 
-# Ethereum Private Key (用于预言机数据签名)
-# 测试用 (严禁使用生产钱包私钥)
-RWA_SIGNER_KEY="0x..."
-
+```
+GEMINI_API_KEY="AIzaSy..."   # 用于 AI 策略
+RWA_SIGNER_KEY="0x..."       # 用于预言机签名 (测试私钥)
 ```
 
 ---
 
-##  Usage (使用指南)
+## 🚀 Usage (使用指南)
 
-### 1. 运行标准流程 (Standard Run)
+### 1. 生产模式 (Production Pipeline)
 
-使用默认策略（JSON 配置）和风控：
+计算**今日**的最新仓位，并生成预言机 Payload：
 
-```bash
+Bash
+
+```
+# 默认使用 Manual JSON 观点
 uv run main.py --portfolio mag_seven
 
-```
-
-### 2. 运行 AI 策略 (AI Strategy)
-
-启用 Gemini 智能体进行联网分析：
-
-```bash
+# 使用 AI 智能体观点
 uv run main.py --portfolio mag_seven --strategy llm
-
 ```
 
-* **输入**: `portfolios/portfolios.json` 定义的资产池。
-* **输出**: 控制台日志 + `oracle_output_{name}.json`。
-* **审计**: 查看 `debug_views_{name}.json` 获取 AI 的思考过程。
+### 2. 回测模式 (Backtesting Mode) 
 
-### 3. 研究模式 (Research Mode)
+启动时间机器，验证策略在历史数据上的表现。
 
-**警告**: 此模式会关闭所有风控（30% Cap, Cash Buffer），仅用于查看数学模型的理论最优解。
+#### A. 标准回测 (Risk-Managed)
 
-```bash
-uv run main.py --portfolio mag_seven --strategy llm --no-risk
+模拟真实生产环境（含 30% Hard Cap 和 5% 现金缓冲）：
+
+Bash
 
 ```
+# 回测过去 3 年，使用 XGBoost 策略
+uv run run_backtest.py --portfolio mag_seven --years 3 --view-source ml
+```
+
+#### B. 无约束研究模式 (Unconstrained Research)
+
+**警告**: 关闭所有风控，仅用于观察数学模型（如 Markowitz）在极端情况下的原始行为。
+
+Bash
+
+```
+uv run run_backtest.py --portfolio mag_seven --years 3 --view-source ml --no-risk
+```
+
+#### 输出产物 (Outcomes)
+
+所有回测结果将自动归档至 `outcomes/` 目录，包含：
+
+- `comparison_result.png`: **专业仪表盘** (净值曲线 + VIX 恐慌区间)。
+    
+- `allocation_Black-Litterman.png`: 策略持仓历史堆叠图。
+    
 
 ---
 
-##  Strategy Modules (策略模块详解)
+##  Strategy Modules (策略模块)
 
-系统支持三种策略模式，通过工厂模式 (`StrategyFactory`) 动态切换：
-
-| 模式 | 参数 `--strategy` | 描述                                                | 适用场景 |
-| --- | --- |---------------------------------------------------| --- |
-| **Manual** | `json` | 读取 `portfolios/views.json` 中的静态观点。                | 回测、调试、人工干预。 |
-| **Machine Learning** | `ml` | 使用 XGBoost/RandomForest 基于量价因子预测。                 | 短线量化、因子挖掘。 |
-| **AI Agent** | `llm` |  Gemini 3.0 + Google Search。提取分析师评级和财报数据。 | 捕捉宏观情绪、基本面事件。 |
-
-### LLM Scorecard Logic (v3.1)
-
-AI 代理不直接生成权重，而是填写一份 **评分卡**：
-
-* **Tier 1 (High)**: 确凿的硬数据（如财报超预期、SEC文件）。置信度映射为 **0.95**。
-* **Tier 2 (Med)**: 机构评级（如高盛上调目标价）。置信度映射为 **0.80**。
-* **Tier 3 (Low)**: 市场传言。直接丢弃。
+|**模式**|**参数 --strategy**|**描述**|**适用场景**|
+|---|---|---|---|
+|**Manual**|`json`|读取 `portfolios/views.json` 中的静态观点。|回测基准、人工干预。|
+|**ML Alpha**|`ml`|**XGBoost** 模型。预测 `Asset Return - SPY Return` (Alpha)，并根据 VIX 进行信号增强。|捕捉中短线超额收益。|
+|**AI Agent**|`llm`|**Gemini 3.0**。提取分析师评级和财报数据，自动校准为年化收益。|捕捉基本面事件驱动。|
 
 ---
 
-##  Risk Guardrails (风控机制)
+##  Project Structure (目录结构)
 
-`PortfolioRiskManager` 是系统的最后一道防线：
+Plaintext
 
-1. **Dust Cleaner**: 清除权重 < 1% 的资产。
-2. **Hard Cap**: 任何单一资产权重 > 30% 及其溢出部分，**强制削减**。
-3. **Liquidity Injection**: 被削减的权重与预留的 5% Buffer 一起注入 **USDC**。
-4. **Normalization**: 确保最终 `Sum(Assets) + USDC = 100%`。
-
----
-
-##   Project Structure (目录结构)
-
-```text
+```
 rwa-quant-engine/
-├── configs/               # (Legacy) 旧配置目录
-├── portfolios/            # 资产组合定义 (JSON)
+├── outcomes/              # 回测结果自动归档 (图片/日志)
+├── portfolios/            # 资产组合定义
 │   ├── portfolios.json    # 资产池
-│   └── views.json         # 手动观点
+│   ├── views.json         # 生产观点
+│   └── views_backtest.json# 回测静态观点
 ├── src/
 │   └── rwaengine/
+│       ├── analysis/      # 回测与分析模块
+│       │   ├── backtester.py # 滚动回测引擎
+│       │   ├── plotter.py    # 专业可视化 (Dual-Panel VIX Plot)
+│       │   └── strategies.py # 策略基类
 │       ├── core/          # 核心计算 (BL Model)
 │       ├── data/          # 数据适配器 (YFinance)
 │       ├── execution/     # 风控与执行 (Risk Manager)
 │       ├── oracle/        # 预言机接口 (NAV Reporter)
 │       ├── strategy/      # 策略工厂
-│       │   ├── generators/# 具体策略实现 (LLM, ML, Manual)
+│       │   ├── generators/# 具体策略实现
 │       │   └── factory.py # 工厂类
 │       └── utils/         # 工具类
-├── tests/                 # Pytest 测试用例
-├── main.py                # 程序入口
+├── main.py                # [生产] 程序入口
+├── run_backtest.py        # [回测] 程序入口
 ├── pyproject.toml         # 依赖配置
 └── README.md              # 项目文档
-
 ```
 
 ---
 
-##   Disclaimer (免责声明)
+##  Disclaimer (免责声明)
 
 本软件仅供 **研究与技术验证** 使用。
 
-1. **非投资建议**: 生成的投资组合权重仅基于数学模型，不构成任何财务建议。
-2. **API 风险**: 依赖第三方数据源 (Yahoo Finance, Google Search)，可能存在数据延迟或中断。
-3. **模型风险**: Black-Litterman 模型对输入参数（特别是 $\Pi$ 和 $Q$）极度敏感，需谨慎校准。
+1. **非投资建议**: 生成的权重仅基于数学模型。
+    
+2. **模型风险**: Black-Litterman 模型对输入参数极度敏感。
+    
+3. **回测偏差**: 历史业绩不代表未来表现，回测可能存在幸存者偏差。
+    
 
 ---
 
-*Architected by RWA-Quant Team (2026)*
+_Architected by RWA-Quant Team (2026)_

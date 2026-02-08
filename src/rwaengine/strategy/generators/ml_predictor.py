@@ -1,128 +1,191 @@
 """
 File: src/rwaengine/strategy/generators/ml_predictor.py
-Description: ML-based Strategy Generator adapted from machine_learning_strategies.py
+Description: XGBoost Alpha Strategy (Relative Views + VIX Features).
 """
 import pandas as pd
 import numpy as np
-from typing import List, Literal
+from typing import List, Literal, Tuple, Optional
 from loguru import logger
 
-# ML 依赖
-from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.impute import SimpleImputer
-from sklearn.metrics import r2_score
+import xgboost as xgb
+from sklearn.model_selection import TimeSeriesSplit
 
 from src.rwaengine.strategy.base import ViewGenerator
 from src.rwaengine.strategy.types import InvestorView
 
-ModelType = Literal['Linear Regression', 'Random Forest', 'Gradient Boosting']
-
 class MLViewGenerator(ViewGenerator):
-    def __init__(self, history_data: pd.DataFrame, model_type: ModelType = 'Linear Regression'):
+    def __init__(self, history_data: pd.DataFrame):
         """
         Args:
-            history_data: 完整的历史价格数据 (Index: Date, Columns: Tickers)
-            model_type: 选择的模型类型
+            history_data: 包含 Tickers, SPY, ^VIX 的完整历史数据
         """
         self.history = history_data
-        self.model_type = model_type
-        self.scaler = StandardScaler()
+        self.lookahead_days = 5  # 预测未来 1 周的超额收益
 
-    def _create_features(self, price_series: pd.Series, lag_days: int = 5) -> pd.DataFrame:
+        # 尝试提取基准数据
+        self.spy_series = self.history.get("SPY")
+        self.vix_series = self.history.get("^VIX")
+
+        if self.spy_series is None or self.vix_series is None:
+            logger.warning("  SPY or ^VIX missing in history! ML features will be limited.")
+
+        self.xgb_params = {
+            'objective': 'reg:squarederror',
+            'n_estimators': 150,     # 略微增加树的数量
+            'max_depth': 4,          # 略微增加深度以捕捉交互特征 (VIX * Price)
+            'learning_rate': 0.03,   # 降低学习率，更稳健
+            'subsample': 0.7,
+            'colsample_bytree': 0.7,
+            'n_jobs': -1
+        }
+
+    def _add_features(self, ticker_series: pd.Series) -> pd.DataFrame:
         """
-        特征工程：移动平均 + 滞后特征
+        Advanced Feature Engineering: Asset + Market (SPY) + Fear (VIX)
         """
-        df = price_series.to_frame(columns=['Close'])
+        df = ticker_series.to_frame(name='Close')
 
-        df['5d_rolling_avg'] = df['Close'].rolling(window=5).mean()
-        df['10d_rolling_avg'] = df['Close'].rolling(window=10).mean()
+        # === 1. Asset Technicals ===
+        df['log_ret'] = np.log(df['Close'] / df['Close'].shift(1))
+        df['vol_20'] = df['log_ret'].rolling(20).std()
+        df['roc_10'] = df['Close'].pct_change(10)
 
-        for i in range(1, lag_days + 1):
-            df[f'lag_{i}'] = df['Close'].shift(i)
+        # RSI
+        delta = df['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+        rs = gain / loss
+        df['rsi'] = 100 - (100 / (1 + rs))
 
-        # 清洗 NaN (由于 rolling 和 shift 产生)
-        df.dropna(inplace=True)
-        return df
+        # === 2. Market Context (SPY) ===
+        if self.spy_series is not None:
+            spy_df = self.spy_series.to_frame(name='SPY')
+            # 相对强弱 (Relative Strength)
+            # 资产净值 / SPY净值 的走势
+            df['rel_strength'] = df['Close'] / spy_df['SPY']
+            df['rel_strength_ma20'] = df['rel_strength'].rolling(20).mean()
+            # 相对动量
+            df['rel_mom'] = df['rel_strength'] / df['rel_strength'].shift(10) - 1
 
-    def _get_model_instance(self):
-        """工厂方法获取模型实例"""
-        if self.model_type == 'Random Forest':
-            return RandomForestRegressor(n_estimators=100, random_state=42)
-        elif self.model_type == 'Gradient Boosting':
-            return GradientBoostingRegressor(n_estimators=100, random_state=42)
-        elif self.model_type == 'Linear Regression':
-            return LinearRegression()
+        # === 3. Fear Gauge (VIX) ===
+        if self.vix_series is not None:
+            vix_df = self.vix_series.to_frame(name='VIX')
+            df['vix_level'] = vix_df['VIX']
+            df['vix_ma50'] = vix_df['VIX'].rolling(50).mean()
+            # VIX Regime: Current vs Average
+            df['vix_gap'] = df['vix_level'] - df['vix_ma50']
+
+        # === 4. Prediction Target (Alpha) ===
+        # Target = Asset_Ret_Next_5d - SPY_Ret_Next_5d
+        asset_fwd_ret = df['Close'].shift(-self.lookahead_days) / df['Close'] - 1
+
+        if self.spy_series is not None:
+            spy_fwd_ret = self.spy_series.shift(-self.lookahead_days) / self.spy_series - 1
+            # [Core Change] 预测目标改为超额收益 (Alpha)
+            df['target_alpha'] = asset_fwd_ret - spy_fwd_ret
         else:
-            raise ValueError(f"Unsupported model type: {self.model_type}")
+            # Fallback to absolute return
+            df['target_alpha'] = asset_fwd_ret
+
+        return df.dropna()
+
+    def _train_and_predict(self, df_features: pd.DataFrame) -> Tuple[float, float]:
+        """
+        Train XGBoost to predict Alpha
+        """
+        # 排除非特征列
+        exclude_cols = ['Close', 'target_alpha', 'log_ret']
+        feature_cols = [c for c in df_features.columns if c not in exclude_cols]
+
+        X = df_features[feature_cols]
+        y = df_features['target_alpha']
+
+        # TimeSeries Cross-Validation
+        tscv = TimeSeriesSplit(n_splits=3)
+        scores = []
+        model = xgb.XGBRegressor(**self.xgb_params)
+
+        for train_idx, test_idx in tscv.split(X):
+            model.fit(X.iloc[train_idx], y.iloc[train_idx])
+            preds = model.predict(X.iloc[test_idx])
+            # Directional Accuracy (看对方向比预测准数值更重要)
+            direction_acc = np.mean(np.sign(preds) == np.sign(y.iloc[test_idx]))
+            scores.append(direction_acc)
+
+        confidence = np.mean(scores) if scores else 0.5
+
+        # Full Retrain & Predict
+        model.fit(X, y)
+        latest = X.iloc[[-1]]
+        pred_alpha = model.predict(latest)[0]
+
+        return pred_alpha, confidence
+
+    def _amplify_signal(self, pred_alpha: float, volatility: float) -> float:
+        """
+        [Signal Enhancement v2]
+        Input: Predicted Alpha (Weekly)
+        Output: Annualized Absolute View
+        """
+        # 1. 噪音过滤
+        if abs(pred_alpha) < 0.002: # 如果超额收益 < 0.2% (周), 忽略
+            return 0.0
+
+        # 2. 转换逻辑
+        # 如果 Alpha > 0 (跑赢大盘): View = Base_Bull (15%) + Alpha_Boost
+        # 如果 Alpha < 0 (跑输大盘): View = Base_Bear (-15%) + Alpha_Boost
+
+        direction = np.sign(pred_alpha)
+
+        # 基础观点 (锚定): 15% 年化 (足以战胜 4% 无风险利率)
+        base_view = 0.15
+
+        # 波动率补偿: 波动越大的资产，需要的 View 幅度越大才能改变权重
+        vol_adj = (volatility * np.sqrt(252)) * 0.5
+
+        # 最终观点 = 方向 * (基准 + 波动补偿)
+        final_view = direction * (base_view + vol_adj)
+
+        return final_view
 
     def generate_views(self, current_prices: pd.Series) -> List[InvestorView]:
-        """
-        对每个资产单独训练模型并生成观点
-        """
-        logger.info(f"Training {self.model_type} models for {len(current_prices)} assets...")
+        tickers = [t for t in current_prices.index if t not in ['SPY', '^VIX']]
         views = []
-        tickers = current_prices.index.tolist()
+
+        logger.info(f"  ML Alpha Strategy (XGBoost): Analyzing {len(tickers)} assets vs SPY...")
 
         for ticker in tickers:
-            if ticker not in self.history.columns:
-                logger.warning(f"Skipping {ticker}: No history data available.")
-                continue
+            if ticker not in self.history.columns: continue
 
             try:
-                ticker_data = self.history[ticker]
-                df_features = self._create_features(ticker_data)
+                # 1. Prep Data
+                df = self._add_features(self.history[ticker])
+                if len(df) < 100: continue
 
-                if len(df_features) < 30:
-                    continue
+                # 2. Predict Alpha
+                pred_alpha, conf_score = self._train_and_predict(df)
 
-                X = df_features.drop(columns=['Close'])
-                y = df_features['Close']
+                # 3. Construct View
+                # 获取当前波动率用于校准
+                curr_vol = df['vol_20'].iloc[-1]
+                bl_view_return = self._amplify_signal(pred_alpha, curr_vol)
 
-                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+                if bl_view_return == 0.0: continue
 
-                imputer = SimpleImputer(strategy='mean')
-                X_train_imputed = imputer.fit_transform(X_train)
-                X_test_imputed = imputer.transform(X_test)
+                # 置信度映射
+                final_conf = min(0.4 + conf_score, 0.90) # Base confidence raised
 
-                X_train_scaled = self.scaler.fit_transform(X_train_imputed)
-                X_test_scaled = self.scaler.transform(X_test_imputed)
-
-                model = self._get_model_instance()
-                model.fit(X_train_scaled, y_train)
-
-                score = model.score(X_test_scaled, y_test)
-
-                if score <= 0.05:
-                    continue
-
-                confidence = min(max(score, 0.0), 1.0)
-
-                latest_features_row = df_features.iloc[[-1]].drop(columns=['Close'])
-                latest_features_imputed = imputer.transform(latest_features_row)
-                latest_features_scaled = self.scaler.transform(latest_features_imputed)
-
-                predicted_price = model.predict(latest_features_scaled)[0]
-                current_price = current_prices[ticker]
-
-                expected_return = (predicted_price - current_price) / current_price
-
-                if abs(expected_return) > 0.005:
-                    direction = 1.0 if expected_return > 0 else -1.0
-
-                    view = InvestorView(
-                        assets=[ticker],
-                        weights=[direction],  # Long or Short
-                        expected_return=abs(expected_return), # BL 模型通常接受绝对值 magnitude
-                        confidence=confidence,
-                        description=f"ML Prediction ({self.model_type}): R2={confidence:.2f}"
-                    )
-                    views.append(view)
+                view = InvestorView(
+                    assets=[ticker],
+                    weights=[1.0],
+                    expected_return=bl_view_return,
+                    confidence=final_conf,
+                    description=f"AlphaPred: {pred_alpha*100:.2f}% (vs SPY) | VIX_Adj View"
+                )
+                views.append(view)
 
             except Exception as e:
-                logger.error(f"ML training failed for {ticker}: {e}")
+                logger.error(f"ML failed for {ticker}: {e}")
 
-        logger.success(f"Generated {len(views)} views from ML models.")
+        logger.success(f"Generated {len(views)} Alpha Views.")
         return views

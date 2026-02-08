@@ -9,6 +9,8 @@ import os
 import pandas as pd
 from datetime import date, timedelta
 from loguru import logger
+from src.rwaengine.utils.logger import setup_logger
+setup_logger()
 from dotenv import load_dotenv
 import yfinance as yf
 import json
