@@ -12,29 +12,29 @@
 
 ```mermaid
 graph LR
-    A[Data Ingestion] --> B[Strategy Engine]
-    B --> C[Core Engine (BL Model)]
-    C --> D[Risk Gatekeeper]
-    D --> E[Oracle Reporter]
+    A["Data Ingestion"] --> B["Strategy Engine"]
+    B --> C["Core Engine (BL Model)"]
+    C --> D["Risk Gatekeeper"]
+    D --> E["Oracle Reporter"]
 
     subgraph "Phase 1: Data"
-    A[YFinance Adapter]
+    A["YFinance Adapter"]
     end
 
     subgraph "Phase 2: Strategy"
-    B1[Manual JSON]
-    B2[ML Predictor]
-    B3[LLM Agent (Gemini + Search)]
+    B1["Manual JSON"]
+    B2["ML Predictor"]
+    B3["LLM Agent (Gemini + Search)"]
     end
 
     subgraph "Phase 3: Risk"
-    D1[Hard Cap (30%)]
-    D2[Liquidity Buffer (5%)]
+    D1["Hard Cap (30%)"]
+    D2["Liquidity Buffer (5%)"]
     end
 
     subgraph "Phase 4: Oracle"
-    E1[EIP-191 Signing]
-    E2[JSON Payload]
+    E1["EIP-191 Signing"]
+    E2["JSON Payload"]
     end
 
 ```
@@ -49,13 +49,13 @@ graph LR
 
 
 2. **AI-Powered Strategy (v3.1)**:
-* 集成 **Google Gemini 2.0 Flash** 与 **Google Search**。
+* 集成 **Google Gemini 3.0 Pro** 与 **Google Search**。
 * **Scorecard Pattern**: 摒弃 LLM 随机打分，采用“证据分级制度 (Tier 1/2/3)” 提取硬数据（财报、目标价）。
 * **Auto-Calibration**: 自动将分析师目标价转换为 BL 模型所需的 **年化预期收益 (Annualized Returns)**。
 
 
 3. **Institutional Risk Control**:
-* **Gatekeeper**: 强制执行单票 30% 上限与 5% USDC 现金缓冲。
+* **Gatekeeper**: 可选执行单票 30% 上限与 5% USDC 现金缓冲。
 * **Dust Filtering**: 自动过滤 < 1% 的碎股权重，节省链上 Gas。
 
 
@@ -84,7 +84,7 @@ git clone https://github.com/your-repo/rwa-quant-engine.git
 cd rwa-quant-engine
 
 # 2. 安装依赖 (自动创建虚拟环境)
-uv sync
+uv sync --extra dev
 
 ```
 
@@ -111,7 +111,7 @@ RWA_SIGNER_KEY="0x..."
 使用默认策略（JSON 配置）和风控：
 
 ```bash
-uv run main.py --portfolio default
+uv run main.py --portfolio mag_seven
 
 ```
 
@@ -143,11 +143,11 @@ uv run main.py --portfolio mag_seven --strategy llm --no-risk
 
 系统支持三种策略模式，通过工厂模式 (`StrategyFactory`) 动态切换：
 
-| 模式 | 参数 `--strategy` | 描述 | 适用场景 |
-| --- | --- | --- | --- |
-| **Manual** | `json` | 读取 `portfolios/views.json` 中的静态观点。 | 回测、调试、人工干预。 |
-| **Machine Learning** | `ml` | 使用 XGBoost/RandomForest 基于量价因子预测。 | 短线量化、因子挖掘。 |
-| **AI Agent** | `llm` | **(核心)** Gemini 2.0 + Google Search。提取分析师评级和财报数据。 | 捕捉宏观情绪、基本面事件。 |
+| 模式 | 参数 `--strategy` | 描述                                                | 适用场景 |
+| --- | --- |---------------------------------------------------| --- |
+| **Manual** | `json` | 读取 `portfolios/views.json` 中的静态观点。                | 回测、调试、人工干预。 |
+| **Machine Learning** | `ml` | 使用 XGBoost/RandomForest 基于量价因子预测。                 | 短线量化、因子挖掘。 |
+| **AI Agent** | `llm` |  Gemini 3.0 + Google Search。提取分析师评级和财报数据。 | 捕捉宏观情绪、基本面事件。 |
 
 ### LLM Scorecard Logic (v3.1)
 
