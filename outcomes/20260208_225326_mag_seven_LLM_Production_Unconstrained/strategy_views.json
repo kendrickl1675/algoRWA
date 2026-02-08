@@ -1,0 +1,26 @@
+[
+  {
+    "assets": [
+      "AAPL"
+    ],
+    "expected_return": 0.13540917589529688,
+    "confidence": 0.8,
+    "description": "[Tier 2] Analysts have raised price targets following a record quarterly revenue report, citing strong Services margins and resilient cash flow generation. (Annualized Imp. Ret: 13.54%)"
+  },
+  {
+    "assets": [
+      "AMZN"
+    ],
+    "expected_return": 0.36596614682388756,
+    "confidence": 0.8,
+    "description": "[Tier 2] Despite a downgrade from DA Davidson, other analysts maintain positive ratings and have increased price targets, citing growth in AWS and core retail efficiencies. (Annualized Imp. Ret: 36.60%)"
+  },
+  {
+    "assets": [
+      "META"
+    ],
+    "expected_return": 0.3335046714842922,
+    "confidence": 0.8,
+    "description": "[Tier 2] Strong user growth and platform profitability underpin a compelling long-term risk/reward, despite heavy ad revenue dependence. (Annualized Imp. Ret: 33.35%)"
+  }
+]

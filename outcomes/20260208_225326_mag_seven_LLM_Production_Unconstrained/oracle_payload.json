@@ -1,0 +1,41 @@
+{
+  "data": {
+    "portfolio_id": "mag_seven",
+    "nonce": 1770562419,
+    "timestamp": 1770562419,
+    "allocations": [
+      {
+        "symbol": "AAPL",
+        "weight_bps": 0
+      },
+      {
+        "symbol": "MSFT",
+        "weight_bps": 1002
+      },
+      {
+        "symbol": "GOOGL",
+        "weight_bps": 753
+      },
+      {
+        "symbol": "AMZN",
+        "weight_bps": 4306
+      },
+      {
+        "symbol": "NVDA",
+        "weight_bps": 1019
+      },
+      {
+        "symbol": "META",
+        "weight_bps": 1982
+      },
+      {
+        "symbol": "TSLA",
+        "weight_bps": 935
+      }
+    ],
+    "total_assets": 7,
+    "risk_verified": true
+  },
+  "signature": "0abab7197def79dcd95050d4035aa6476a84db08cf4a7f35310fdb9bf54885f7563fa8411d0bb51f353d3b9b687d6386f7798e029a3ece6e3a36e90d06d9733a1b",
+  "signer_address": "0x9487e7a5110BDfeD272778e275ed7Ea57699e033"
+}

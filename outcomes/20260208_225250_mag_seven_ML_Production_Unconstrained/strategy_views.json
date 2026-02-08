@@ -1,0 +1,58 @@
+[
+  {
+    "assets": [
+      "AAPL"
+    ],
+    "expected_return": 0.2511028182865087,
+    "confidence": 0.8489795918367348,
+    "description": "AlphaPred: 5.44% (vs SPY) | VIX_Adj View"
+  },
+  {
+    "assets": [
+      "MSFT"
+    ],
+    "expected_return": -0.3710674641224272,
+    "confidence": 0.8761904761904762,
+    "description": "AlphaPred: -6.43% (vs SPY) | VIX_Adj View"
+  },
+  {
+    "assets": [
+      "GOOGL"
+    ],
+    "expected_return": -0.2399257348745687,
+    "confidence": 0.8489795918367348,
+    "description": "AlphaPred: -1.86% (vs SPY) | VIX_Adj View"
+  },
+  {
+    "assets": [
+      "AMZN"
+    ],
+    "expected_return": -0.29323524879277796,
+    "confidence": 0.9,
+    "description": "AlphaPred: -6.63% (vs SPY) | VIX_Adj View"
+  },
+  {
+    "assets": [
+      "NVDA"
+    ],
+    "expected_return": -0.27969886813718536,
+    "confidence": 0.9,
+    "description": "AlphaPred: -2.16% (vs SPY) | VIX_Adj View"
+  },
+  {
+    "assets": [
+      "META"
+    ],
+    "expected_return": -0.3886722479446759,
+    "confidence": 0.8081632653061225,
+    "description": "AlphaPred: -7.04% (vs SPY) | VIX_Adj View"
+  },
+  {
+    "assets": [
+      "TSLA"
+    ],
+    "expected_return": -0.34929785472544667,
+    "confidence": 0.9,
+    "description": "AlphaPred: -1.51% (vs SPY) | VIX_Adj View"
+  }
+]
