@@ -14,5 +14,7 @@ wheels/
 logs/
 *.log
 
+outcomes/
+
 project_context.md
 sync_context.py
