@@ -2,7 +2,7 @@
 
 **RWA Quant Engine** 是一个专业的链下（Off-Chain）量化计算引擎，专为 **RWA（现实世界资产）** 美股基金设计。
 
-该引擎采用 **Black-Litterman 模型** 作为核心算法，结合 **Google Gemini 2.0** 的多模态推理能力生成战术观点，并通过严苛的风控层（Risk Guardrails）输出经过审计的、可被预言机（Oracle）验证的投资组合权重。
+该引擎采用 **Black-Litterman 模型** 作为核心算法，结合 **Google Gemini 3.0** 的多模态推理能力生成战术观点，并通过严苛的风控层（Risk Guardrails）输出经过审计的、可被预言机（Oracle）验证的投资组合权重。
 
 ---
 
