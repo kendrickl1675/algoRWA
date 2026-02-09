@@ -29,18 +29,18 @@
 
 ```mermaid
 graph LR
-    A[Data Ingestion<br/>(YFinance)] --> B{Strategy Factory}
-    B -->|Fundamental| C[LLM Agent<br/>Gemini + Search]
-    B -->|Alpha| D[ML Predictor<br/>XGBoost + VIX]
-    B -->|Static| E[Manual JSON]
+    A["Data Ingestion<br/>(YFinance)"] --> B{"Strategy Factory"}
+    B -->|Fundamental| C["LLM Agent<br/>Gemini + Search"]
+    B -->|Alpha| D["ML Predictor<br/>XGBoost + VIX"]
+    B -->|Static| E["Manual JSON"]
     
-    C & D & E --> F[Black-Litterman Core<br/>(Idzorek Method)]
-    F --> G[Risk Gatekeeper<br/>(Hard Caps & Buffers)]
-    G --> H[Oracle Reporter<br/>(EIP-191 Signature)]
+    C & D & E --> F["Black-Litterman Core<br/>(Idzorek Method)"]
+    F --> G["Risk Gatekeeper<br/>(Hard Caps & Buffers)"]
+    G --> H["Oracle Reporter<br/>(EIP-191 Signature)"]
     
     subgraph "Analysis & Research"
-    F --> I[Walk-Forward Backtest]
-    I --> J[Regime Analysis<br/>(Net Value vs VIX)]
+    F --> I["Walk-Forward Backtest"]
+    I --> J["Regime Analysis<br/>(Net Value vs VIX)"]
     end
 ```
 
