@@ -1,28 +1,33 @@
+
 """
-File: src/rwaengine/strategy/base.py
-Description: Interface for View Generators (Strategy Pattern).
+Abstract interface for investor-view generators.
+
+All concrete view sources (static JSON, ML-based, LLM-based) must
+implement the ``generate_views`` method defined here.  This ensures the
+Black-Litterman engine can consume views from any source through a
+single uniform contract.
 """
 from abc import ABC, abstractmethod
 from typing import List
+
 import pandas as pd
 
 from src.rwaengine.strategy.types import InvestorView
 
 
 class ViewGenerator(ABC):
-    """
-    Abstract Base Class for generating Investor Views (P and Q matrices).
-    """
+    """Contract that every investor-view source must satisfy."""
 
     @abstractmethod
     def generate_views(self, current_prices: pd.Series) -> List[InvestorView]:
-        """
-        基于当前市场状态生成观点。
+        """Produce a list of investor views based on the current market state.
 
         Args:
-            current_prices: 最新资产价格 (用于参考或计算隐含市值)
+            current_prices: Series indexed by ticker with the most recent
+                            prices.  Implementations may use these to compute
+                            implied market caps or to validate asset coverage.
 
         Returns:
-            List[InvestorView]: 标准化的观点列表
+            A list of standardised ``InvestorView`` objects ready for the
+            Black-Litterman model.
         """
-        pass

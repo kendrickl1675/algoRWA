@@ -1,5 +1,10 @@
-# RWA Quant Engine (Black-Litterman)
+# RWA Quant Engine
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
+[![Dependency Manager](https://img.shields.io/badge/uv-managed-purple)](https://github.com/astral-sh/uv)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 **RWA Quant Engine** 是一个专业的链下（Off-Chain）量化计算引擎，专为 **RWA（现实世界资产）** 美股基金设计。
+
 
 该引擎采用 **Black-Litterman 模型** 作为核心算法，结合 **Google Gemini 3.0** 的多模态推理能力与 **XGBoost** 量化因子生成战术观点，并通过严苛的风控层（Risk Guardrails）输出经过审计的、可被预言机（Oracle）验证的投资组合权重。
 
@@ -18,47 +23,31 @@
 
 ---
 
-##   System Architecture (系统架构)
+##   System Architecture
 
 本系统遵循 **Pipeline 模式**，从数据摄入到预言机汇报，单向流动且不可变：
 
 ```mermaid
 graph LR
-    A["Data Ingestion"] --> B["Strategy Engine"]
-    B --> C["Core Engine (BL Model)"]
-    C --> D["Risk Gatekeeper"]
-    D --> E["Oracle Reporter"]
-    B --> F["Backtesting Suite"]
-
-    subgraph "Phase 1: Data"
-    A["YFinance Adapter"]
-    end
-
-    subgraph "Phase 2: Strategy"
-    B1["Manual JSON"]
-    B2["ML Alpha Hunter (XGBoost)"]
-    B3["LLM Agent (Gemini + Search)"]
-    end
-
-    subgraph "Phase 3: Risk"
-    D1["Hard Cap (30%)"]
-    D2["Liquidity Buffer (5%)"]
-    end
-
-    subgraph "Phase 4: Oracle"
-    E1["EIP-191 Signing"]
-    E2["JSON Payload"]
-    end
-
-    subgraph "Phase 5: Analysis"
-    F["Walk-Forward Backtest"]
+    A[Data Ingestion<br/>(YFinance)] --> B{Strategy Factory}
+    B -->|Fundamental| C[LLM Agent<br/>Gemini + Search]
+    B -->|Alpha| D[ML Predictor<br/>XGBoost + VIX]
+    B -->|Static| E[Manual JSON]
+    
+    C & D & E --> F[Black-Litterman Core<br/>(Idzorek Method)]
+    F --> G[Risk Gatekeeper<br/>(Hard Caps & Buffers)]
+    G --> H[Oracle Reporter<br/>(EIP-191 Signature)]
+    
+    subgraph "Analysis & Research"
+    F --> I[Walk-Forward Backtest]
+    I --> J[Regime Analysis<br/>(Net Value vs VIX)]
     end
 ```
 
 
 ---
 
-##  Key Features (核心特性)
+##  Key Features
 
 1. **Black-Litterman Optimization**:
     
@@ -97,7 +86,7 @@ graph LR
 
 ---
 
-##   Installation (安装指南)
+##   Installation
 
 本项目使用 `uv` 进行极速依赖管理。
 
@@ -121,7 +110,7 @@ cd algoRWA
 uv sync --extra dev
 ```
 
-### 3. Configuration (.env)
+### 3. Configuration
 
 复制 `.env.example` 为 `.env` 并填入密钥：
 
@@ -134,9 +123,9 @@ RWA_SIGNER_KEY="0x..."       # 用于预言机签名 (测试私钥)
 
 ---
 
-##   Usage (使用指南)
+##   Usage
 
-### 1. 生产模式 (Production Pipeline)
+### 1. 预测模式
 
 计算**今日**的最新仓位，并生成预言机 Payload：
 
@@ -150,11 +139,11 @@ uv run main.py --portfolio mag_seven
 uv run main.py --portfolio mag_seven --strategy llm
 ```
 
-### 2. 回测模式 (Backtesting Mode) 
+### 2. 回测模式
 
 启动时间机器，验证策略在历史数据上的表现。
 
-#### A. 标准回测 (Risk-Managed)
+#### A. 标准回测
 
 模拟真实生产环境（含 30% Hard Cap 和 5% 现金缓冲）：
 
@@ -183,7 +172,9 @@ uv run run_backtest.py --portfolio mag_seven --years 3 --view-source ml --no-ris
     
 - `allocation_Black-Litterman.png`: 策略持仓历史堆叠图。
     
+#### Sample Output
 
+![Backtest Dashboard](outcomes/20260208_221526_mag_seven_3yr_Unconstrained_JSON/comparison_result.png)
 ---
 
 ##  Strategy Modules (策略模块)
@@ -204,24 +195,16 @@ Plaintext
 rwa-quant-engine/
 ├── outcomes/              # 回测结果自动归档 (图片/日志)
 ├── portfolios/            # 资产组合定义
-│   ├── portfolios.json    # 资产池
-│   ├── views.json         # 生产观点
-│   └── views_backtest.json# 回测静态观点
 ├── src/
 │   └── rwaengine/
 │       ├── analysis/      # 回测与分析模块
-│       │   ├── backtester.py # 滚动回测引擎
-│       │   ├── plotter.py    # 专业可视化 (Dual-Panel VIX Plot)
-│       │   └── strategies.py # 策略基类
-│       ├── core/          # 核心计算 (BL Model)
-│       ├── data/          # 数据适配器 (YFinance)
-│       ├── execution/     # 风控与执行 (Risk Manager)
-│       ├── oracle/        # 预言机接口 (NAV Reporter)
+│       ├── core/          # 核心计算
+│       ├── data/          # 数据适配器
+│       ├── execution/     # 风控与执行
+│       ├── oracle/        # 预言机接口
 │       ├── strategy/      # 策略工厂
-│       │   ├── generators/# 具体策略实现
-│       │   └── factory.py # 工厂类
 │       └── utils/         # 工具类
-├── main.py                # [生产] 程序入口
+├── main.py                # [预测] 程序入口
 ├── run_backtest.py        # [回测] 程序入口
 ├── pyproject.toml         # 依赖配置
 └── README.md              # 项目文档

@@ -1,125 +1,143 @@
 """
-File: src/rwaengine/analysis/strategies.py
-Description: Strategy definitions with dynamic View Source configuration.
-"""
-from abc import ABC, abstractmethod
-import pandas as pd
-import os
-from loguru import logger
-from typing import Dict, Optional, Literal
+Portfolio rebalancing strategies.
 
-from pypfopt import risk_models, expected_returns, EfficientFrontier
+Provides a pluggable strategy hierarchy:
+  - ``BaseStrategy``: abstract interface shared by all strategies.
+  - ``MarkowitzStrategy``: classic mean-variance (max Sharpe) optimisation.
+  - ``BLStrategy``: Black-Litterman model with dynamic investor-view sources
+    (static JSON, ML-based, or LLM-generated).
+"""
+import os
+from abc import ABC, abstractmethod
+from typing import Dict, Literal, Optional
+
+import pandas as pd
+from loguru import logger
+from pypfopt import EfficientFrontier, expected_returns, risk_models
 
 from src.rwaengine.core.engine import BlackLittermanEngine
 from src.rwaengine.execution.risk_manager import PortfolioRiskManager
 from src.rwaengine.strategy.types import OptimizationResult
 
-# [New] 引入工厂和具体生成器
-from src.rwaengine.strategy.factory import StrategyFactory
-from src.rwaengine.strategy.generators.json_loader import JsonViewGenerator
-
-# 定义支持的视图来源类型
 ViewSourceType = Literal["json", "ml", "llm"]
 
+
 class BaseStrategy(ABC):
-    def __init__(self, name: str, risk_manager: Optional[PortfolioRiskManager] = None):
+    """Common interface for all portfolio rebalancing strategies."""
+
+    def __init__(
+        self,
+        name: str,
+        risk_manager: Optional[PortfolioRiskManager] = None,
+    ):
         self.name = name
         self.risk_manager = risk_manager
 
     @abstractmethod
     def rebalance(self, history: pd.DataFrame, **kwargs) -> Dict[str, float]:
-        pass
+        """Return target portfolio weights given recent price history."""
 
-    def _apply_risk_or_pass(self, raw_result: OptimizationResult) -> Dict[str, float]:
-        """Helper: Apply risk guardrails if manager exists, else return raw."""
+    def _apply_risk_or_pass(
+        self, raw_result: OptimizationResult
+    ) -> Dict[str, float]:
+        """Apply risk guardrails when a manager is configured, otherwise
+        return the raw optimiser output unchanged."""
         if self.risk_manager:
-            final_res = self.risk_manager.apply_guardrails(raw_result)
-            return dict(zip(final_res.tickers, final_res.weights))
-        else:
-            return dict(zip(raw_result.tickers, raw_result.weights))
+            adjusted = self.risk_manager.apply_guardrails(raw_result)
+            return dict(zip(adjusted.tickers, adjusted.weights))
+        return dict(zip(raw_result.tickers, raw_result.weights))
 
 
 class MarkowitzStrategy(BaseStrategy):
+    """Mean-variance optimisation targeting the maximum Sharpe ratio."""
+
     def rebalance(self, history: pd.DataFrame, **kwargs) -> Dict[str, float]:
         try:
             mu = expected_returns.mean_historical_return(history)
-            S = risk_models.CovarianceShrinkage(history).ledoit_wolf()
+            cov = risk_models.CovarianceShrinkage(history).ledoit_wolf()
 
-            ef = EfficientFrontier(mu, S)
-            weights = ef.max_sharpe(risk_free_rate=0.04)
+            ef = EfficientFrontier(mu, cov)
+            ef.max_sharpe(risk_free_rate=0.04)
             cleaned = ef.clean_weights()
 
             raw_res = OptimizationResult(
                 tickers=list(cleaned.keys()),
                 weights=list(cleaned.values()),
-                expected_return=0, volatility=0, sharpe_ratio=0
+                expected_return=0,
+                volatility=0,
+                sharpe_ratio=0,
             )
             return self._apply_risk_or_pass(raw_res)
+
         except Exception as e:
             logger.warning(f"[{self.name}] Optimization failed: {e}")
             return {}
 
 
 class BLStrategy(BaseStrategy):
-    def __init__(self,
-                 name: str,
-                 risk_manager: Optional[PortfolioRiskManager],
-                 portfolio_name: str,
-                 view_source: ViewSourceType = "json",
-                 view_file: str = "portfolios/views_backtest.json"):
+    """Black-Litterman strategy with configurable investor-view sources."""
+
+    def __init__(
+        self,
+        name: str,
+        risk_manager: Optional[PortfolioRiskManager],
+        portfolio_name: str,
+        view_source: ViewSourceType = "json",
+        view_file: str = "portfolios/views_backtest.json",
+    ):
         """
         Args:
-            view_source: 'json' (static), 'llm' (dynamic AI), 'ml' (dynamic Algo)
-            view_file: Only used if view_source is 'json'
+            name: Human-readable strategy label.
+            risk_manager: Optional guardrail manager applied after optimisation.
+            portfolio_name: Key used to look up tickers and view definitions.
+            view_source: Where investor views come from — ``"json"``, ``"ml"``,
+                         or ``"llm"``.
+            view_file: Path to a static JSON view file (only used when
+                       *view_source* is ``"json"``).
         """
         super().__init__(name, risk_manager)
         self.portfolio_name = portfolio_name
         self.view_source = view_source
         self.view_file = view_file
-        self.mock_caps = None
+        self.mock_caps: Optional[Dict[str, float]] = None
 
-        # 预加载 API Key (仅当需要时)
+        # Only needed for the LLM path; loaded eagerly so we can warn early.
         self.api_key = os.getenv("GEMINI_API_KEY")
         if self.view_source == "llm" and not self.api_key:
-            logger.warning("⚠️ LLM mode selected but GEMINI_API_KEY not found!")
+            logger.warning("LLM mode selected but GEMINI_API_KEY is not set!")
 
     def _get_generator(self, history: pd.DataFrame):
+        """Instantiate the appropriate view generator for the configured source.
+
+        JSON mode bypasses the factory so that a custom *view_file* path can
+        be forwarded.  ML and LLM modes use the standard ``StrategyFactory``.
         """
-        Helper: 根据配置动态获取观点生成器
-        """
-        # 1. JSON Mode: 为了支持自定义文件路径，我们直接实例化而不是走 Factory
-        # (Factory 默认只会加载 portfolios/views.json)
         if self.view_source == "json":
             return JsonViewGenerator(
                 portfolio_name=self.portfolio_name,
-                view_file=self.view_file
+                view_file=self.view_file,
             )
 
-        # 2. LLM / ML Mode: 使用 Factory
-        factory_kwargs = {
-            "portfolio_name": self.portfolio_name,
-            "api_key": self.api_key,
-            "history_data": history # ML 模式需要最新的历史数据进行训练/预测
-        }
-
-        return StrategyFactory.get_generator(self.view_source, **factory_kwargs)
+        return StrategyFactory.get_generator(
+            self.view_source,
+            portfolio_name=self.portfolio_name,
+            api_key=self.api_key,
+            history_data=history,
+        )
 
     def rebalance(self, history: pd.DataFrame, **kwargs) -> Dict[str, float]:
+        # Lazily initialise equal mock market-caps on first call.
         if self.mock_caps is None:
-             self.mock_caps = {t: 1e12 for t in history.columns}
+            self.mock_caps = {t: 1e12 for t in history.columns}
 
         try:
-            # [Dynamic] 获取生成器实例
             generator = self._get_generator(history)
-
-            # 生成观点
-            # 注意: LLM 调用会消耗 Quota 且速度较慢
             views = generator.generate_views(history.iloc[-1])
 
-            # 运行 BL 引擎
             engine = BlackLittermanEngine(prices=history)
-            raw_res = engine.run_optimization(market_caps=self.mock_caps, views=views)
-
+            raw_res = engine.run_optimization(
+                market_caps=self.mock_caps, views=views
+            )
             return self._apply_risk_or_pass(raw_res)
 
         except Exception as e:
