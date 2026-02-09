@@ -1,56 +1,92 @@
+
 """
-File: src/rwaengine/utils/portfolio_loader.py
-Description: Utility to load portfolio definitions from JSON.
+Portfolio definition loader.
+
+Reads a JSON file that maps portfolio names (e.g. ``"mag_seven"``) to
+lists of ticker symbols and caches the result in memory.  The file is
+loaded eagerly at construction time so that configuration errors surface
+immediately rather than mid-pipeline.
+
+Expected JSON structure::
+
+    {
+      "mag_seven": ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA"],
+      "default":   ["SPY"]
+    }
 """
 import json
 import os
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict, List
+
 from loguru import logger
 
 
 class PortfolioLoader:
-    def __init__(self, portfolio_file: str = "portfolios/portfolios.json"):
-        """
-        初始化加载器。
+    """Loads and caches portfolio → ticker mappings from a JSON file."""
 
-        Args:
-            portfolio_file: 资产组合文件的路径 (相对于项目根目录)
+    def __init__(
+        self,
+        portfolio_file: str = "portfolios/portfolios.json",
+    ):
         """
-        # 使用 pathlib 确保跨平台路径兼容
+        Args:
+            portfolio_file: Path to the portfolio definitions file, relative
+                            to the current working directory.
+
+        Raises:
+            FileNotFoundError: If the file does not exist.
+            ValueError: If the file contains invalid JSON.
+        """
         self.file_path = Path(os.getcwd()) / portfolio_file
         self._cache: Dict[str, List[str]] = {}
         self._load_portfolios()
 
-    def _load_portfolios(self):
-        """内部方法：加载并验证 JSON"""
+    def _load_portfolios(self) -> None:
+        """Read the JSON file into the in-memory cache.
+
+        Raises:
+            FileNotFoundError: If *self.file_path* does not exist.
+            ValueError: If the file is not valid JSON.
+        """
         if not self.file_path.exists():
             logger.critical(f"Portfolio file not found at: {self.file_path}")
-            raise FileNotFoundError(f"Missing portfolio definition file: {self.file_path}")
+            raise FileNotFoundError(
+                f"Missing portfolio definition file: {self.file_path}"
+            )
 
         try:
             with open(self.file_path, "r", encoding="utf-8") as f:
                 self._cache = json.load(f)
-            logger.info(f"Loaded portfolio definitions from {self.file_path.name}")
+            logger.info(
+                f"Loaded portfolio definitions from {self.file_path.name}"
+            )
         except json.JSONDecodeError as e:
-            logger.critical(f"Invalid JSON format in portfolio file: {e}")
-            raise ValueError("Corrupted portfolio definition file")
+            logger.critical(f"Invalid JSON in portfolio file: {e}")
+            raise ValueError("Corrupted portfolio definition file") from e
 
     def get_tickers(self, portfolio_name: str) -> List[str]:
-        """
-        获取指定名称的资产组合。
+        """Return the list of ticker symbols for the given portfolio.
 
         Args:
-            portfolio_name: JSON 中的 key (e.g., 'default', 'mag_seven')
+            portfolio_name: Key in the JSON file (e.g. ``"mag_seven"``).
 
         Returns:
-            List[str]: 股票代码列表
+            List of ticker strings.
+
+        Raises:
+            KeyError: If *portfolio_name* is not present in the file.
         """
         if portfolio_name not in self._cache:
-            valid_keys = list(self._cache.keys())
-            logger.error(f"Portfolio '{portfolio_name}' not found. Available: {valid_keys}")
+            available = list(self._cache.keys())
+            logger.error(
+                f"Portfolio '{portfolio_name}' not found. "
+                f"Available: {available}"
+            )
             raise KeyError(f"Unknown portfolio: {portfolio_name}")
 
         tickers = self._cache[portfolio_name]
-        logger.info(f"Selected Portfolio '{portfolio_name}': {len(tickers)} assets")
+        logger.info(
+            f"Selected portfolio '{portfolio_name}': {len(tickers)} assets"
+        )
         return tickers

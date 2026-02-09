@@ -1,6 +1,11 @@
+
 """
-File: src/rwaengine/data/schemas.py
-Description: Defines strict data contracts for market data.
+Strict data contracts for market data.
+
+Pydantic models defined here act as the single source of truth for the
+OHLCV schema.  Financial models (e.g. Black-Litterman) can fail silently
+on bad data (High < Low, negative prices), so validation is enforced at
+the boundary — before anything reaches the core engine.
 """
 from datetime import date
 from typing import Optional
@@ -9,33 +14,30 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class MarketData(BaseModel):
-    """
-    Standard Market Data Model (OHLCV)
+    """Validated OHLCV record for a single ticker on a single trading day."""
 
-    Why this matters:
-    Financial models (like Black-Litterman) will crash silently if fed
-    bad data (e.g., High < Low, or negative prices). We catch this early.
-    """
-    ticker: str = Field(..., description="Asset Symbol (e.g., AAPL)")
-    trade_date: date = Field(..., description="Trading Date")
+    ticker: str = Field(..., description="Asset symbol (e.g. AAPL)")
+    trade_date: date = Field(..., description="Calendar date of the trading session")
 
-    # Validation: Prices must be positive
-    open_price: float = Field(..., gt=0, description="Open Price")
-    high_price: float = Field(..., gt=0, description="High Price")
-    low_price: float = Field(..., gt=0, description="Low Price")
-    close_price: float = Field(..., gt=0, description="Close Price")
+    # All prices must be strictly positive.
+    open_price: float = Field(..., gt=0, description="Opening price")
+    high_price: float = Field(..., gt=0, description="Intraday high")
+    low_price: float = Field(..., gt=0, description="Intraday low")
+    close_price: float = Field(..., gt=0, description="Closing price")
 
-    # Volume can be 0 (market halt), but not negative
-    volume: int = Field(..., ge=0, description="Trading Volume")
+    # Volume of zero is valid (e.g. market halt), but negative is not.
+    volume: int = Field(..., ge=0, description="Number of shares traded")
 
-    # Adjusted Close is optional but crucial for backtesting
-    adj_close: Optional[float] = Field(None, gt=0, description="Adjusted Close")
+    # Adjusted close is optional but essential for accurate backtesting.
+    adj_close: Optional[float] = Field(None, gt=0, description="Split/dividend-adjusted close")
 
-    @field_validator('high_price')
+    @field_validator("high_price")
     @classmethod
-    def validate_high_low(cls, v: float, info):
-        """Risk Check: High price cannot be lower than Low price."""
+    def high_must_not_be_below_low(cls, v: float, info) -> float:
+        """Ensure the high price is never lower than the low price."""
         values = info.data
-        if 'low_price' in values and v < values['low_price']:
-            raise ValueError(f"High price {v} < Low price {values['low_price']}")
+        if "low_price" in values and v < values["low_price"]:
+            raise ValueError(
+                f"High price ({v}) is below low price ({values['low_price']})"
+            )
         return v

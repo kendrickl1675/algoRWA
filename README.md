@@ -183,7 +183,9 @@ uv run run_backtest.py --portfolio mag_seven --years 3 --view-source ml --no-ris
     
 - `allocation_Black-Litterman.png`: 策略持仓历史堆叠图。
     
+#### Sample Output
 
+![Backtest Dashboard](outcomes/20260208_221526_mag_seven_3yr_Unconstrained_JSON/comparison_result.png)
 ---
 
 ##  Strategy Modules (策略模块)

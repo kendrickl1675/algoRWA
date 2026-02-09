@@ -1,6 +1,11 @@
+
 """
-File: src/rwaengine/data/base.py
-Description: Abstract Base Class for all data providers.
+Abstract base class for market data providers.
+
+Every concrete data adapter (e.g. YFinance, Bloomberg, on-chain oracle)
+must implement the `fetch_history` interface defined here.  The base class
+also provides a shared `validate_schema` method that acts as a final
+safety net before data reaches the core engine.
 """
 from abc import ABC, abstractmethod
 from datetime import date
@@ -9,54 +14,65 @@ from typing import List
 import pandas as pd
 from loguru import logger
 
-# Correct Absolute Import based on your src-layout
 from src.rwaengine.data.schemas import MarketData
 
 
 class MarketDataProvider(ABC):
-    """
-    Abstract Base Class that enforces a strict interface for data fetching.
-    """
+    """Contract that all market data adapters must satisfy."""
 
     @abstractmethod
     def fetch_history(
-            self,
-            tickers: List[str],
-            start_date: date,
-            end_date: date
+        self,
+        tickers: List[str],
+        start_date: date,
+        end_date: date,
     ) -> pd.DataFrame:
-        """
-        Fetch historical market data.
+        """Fetch historical OHLCV data for the given tickers and date range.
+
+        Args:
+            tickers: Yahoo-style ticker symbols (e.g. ``["AAPL", "MSFT"]``).
+            start_date: First calendar date of the window (inclusive).
+            end_date: Last calendar date of the window (exclusive in most providers).
 
         Returns:
-            pd.DataFrame: A standardized DataFrame.
-                          Must contain columns: [open, high, low, close, volume]
-                          Index: MultiIndex (date, ticker) or simple Index.
+            A standardized DataFrame whose columns include at minimum:
+            ``open_price``, ``high_price``, ``low_price``, ``close_price``,
+            ``volume``, plus ``trade_date`` and ``ticker`` identifiers.
         """
-        pass
-
 
     def validate_schema(self, df: pd.DataFrame) -> bool:
-        """
-        Defense-in-Depth:
-        Even if the adapter code runs, we verify the output DataFrame structure
-        before passing it to the Core Engine.
+        """Verify that the DataFrame contains every column the engine expects.
+
+        This is a defence-in-depth check: even if the adapter's own
+        transformation logic ran without errors, we still confirm the output
+        schema before handing data to downstream consumers.
+
+        Args:
+            df: The adapter-produced DataFrame to validate.
+
+        Returns:
+            ``True`` if validation passes.
+
+        Raises:
+            ValueError: If one or more required columns are missing.
         """
         required_cols = {
-            'open_price',
-            'high_price',
-            'low_price',
-            'close_price',
-            'volume'
+            "open_price",
+            "high_price",
+            "low_price",
+            "close_price",
+            "volume",
         }
-        # Normalize columns to lowercase for check
-        df_cols = set(c.lower() for c in df.columns)
+
+        # Lowercase comparison so mixed-case columns don't slip through.
+        df_cols = {c.lower() for c in df.columns}
 
         if not required_cols.issubset(df_cols):
             missing = required_cols - df_cols
-            logger.critical(f"Data Schema Violation! Missing columns: {missing}")
-            # 打印当前拥有的列，方便调试
-            logger.debug(f"Current Columns: {df_cols}")
-            raise ValueError(f"DataFrame violates MarketData schema. Missing: {missing}")
+            logger.critical(f"Data schema violation! Missing columns: {missing}")
+            logger.debug(f"Columns present: {sorted(df_cols)}")
+            raise ValueError(
+                f"DataFrame violates MarketData schema. Missing: {missing}"
+            )
 
         return True
